@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { CourseDetails } from './components/CourseDetails';
 import { RegistrationForm } from './components/RegistrationForm';
 import { SubmissionResult } from './components/SubmissionResult';
-import { Loader2 } from 'lucide-react';
 import { RegistrationData, SubmissionStatus } from './types';
 
 const App: React.FC = () => {
@@ -69,7 +68,6 @@ const App: React.FC = () => {
 
               {status === 'submitting' && (
                 <div className="flex flex-col items-center justify-center h-full p-12 space-y-4 min-h-[400px]">
-                  <Loader2 className="h-12 w-12 text-indigo-600 animate-spin" />
                   <p className="text-slate-600 font-medium animate-pulse">
                     正在送出您的報名資訊...
                   </p>
