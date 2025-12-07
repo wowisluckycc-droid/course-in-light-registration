@@ -1,42 +1,60 @@
-import { google } from "googleapis";
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { google } from 'googleapis';
 
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+// 🔐 讀取環境變數
+const SHEET_ID = process.env.GOOGLE_SHEET_ID!;
+const SERVICE_EMAIL = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL!;
+const PRIVATE_KEY = process.env.GOOGLE_PRIVATE_KEY!.replace(/\\n/g, '\n');
 
-  const { name, transferLast5 } = req.body;
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Only POST allowed' });
+    }
 
   try {
-    const auth = new google.auth.GoogleAuth({
-      credentials: {
-        client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-        private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n"),
-      },
-      scopes: ["https://www.googleapis.com/auth/spreadsheets"],
-    });
+    const { name, sex, birthday, phone, note } = req.body;
 
-    const sheets = google.sheets({ version: "v4", auth });
+    // ---------------------------
+    // 1️⃣ Google Sheet 連線
+    // ---------------------------
+    const auth = new google.auth.JWT(
+      SERVICE_EMAIL,
+      undefined,
+      PRIVATE_KEY,
+      ['https://www.googleapis.com/auth/spreadsheets']
+    );
 
+    const sheets = google.sheets({ version: 'v4', auth });
+
+    // ---------------------------
+    // 2️⃣ 寫入 Google Sheet
+    // ---------------------------
     await sheets.spreadsheets.values.append({
-      spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: "A:C",
-      valueInputOption: "RAW",
+      spreadsheetId: SHEET_ID,
+      range: '報名表!A:F', // A~F = 六欄
+      valueInputOption: 'USER_ENTERED',
       requestBody: {
-        values: [
-          [
-            new Date().toLocaleString("zh-TW", { timeZone: "Asia/Taipei" }), // 報名時間
-            name,
-            transferLast5
-          ],
-        ],
+        values: [[
+          name,
+          sex,
+          birthday,
+          phone,
+          note,
+          new Date().toLocaleString("zh-TW") // 時間戳記
+        ]],
       },
     });
 
-    res.status(200).json({ ok: true });
+    // ---------------------------
+    // 3️⃣ 回傳前端（無肯定句）
+    // ---------------------------
+    return res.status(200).json({
+      success: true,
+      message: "已成功寫入 Google Sheet"
+    });
 
-  } catch (error) {
-    console.error("寫入 Google Sheet 失敗：", error);
-    res.status(500).json({ error: "Failed to write sheet" });
+  } catch (error: any) {
+    console.error("API Error:", error);
+    return res.status(500).json({ error: "Server error", detail: error.message });
   }
 }
